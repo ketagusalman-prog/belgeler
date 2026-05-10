@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Umut Salman | Operasyonel Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #10b981; --danger: #ef4444; --text: #f8fafc; --warning: #f59e0b; --admin: #8b5cf6; }
+        body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .container { width: 100%; max-width: 500px; }
+        .main-title { text-align: center; margin-bottom: 20px; font-weight: 800; text-transform: uppercase; font-size: 13px; letter-spacing: 1.2px; cursor: pointer; }
+        .card { background: var(--card); padding: 25px; border-radius: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); margin-bottom: 25px; position: relative; overflow: hidden; }
+        .card::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 5px; }
+        .card-izin::before { background: var(--warning); }
+        .card-diger::before { background: var(--accent); }
+        .card-admin::before { background: var(--admin); }
+        label { display: block; margin-bottom: 6px; font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; }
+        select, input { width: 100%; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; color: white; outline: none; margin-bottom: 12px; font-size: 14px; box-sizing: border-box; transition: 0.3s; }
+        .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-weight: 700; cursor: pointer; transition: 0.2s; font-size: 11px; text-transform: uppercase; margin-top: 5px; }
+        .btn-izin { background: var(--warning); color: #000; }
+        .btn-diger { background: var(--accent); color: white; }
+        .btn-admin { background: var(--admin); color: white; }
+        .btn-danger { background: var(--danger); color: white; margin-top: 10px; }
+        .btn-del { background: #ef444422; color: #ef4444; border: none; padding: 5px 10px; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: bold; }
+        .data-item { background: rgba(15, 23, 42, 0.4); padding: 12px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.03); }
+        .data-info b { color: var(--accent); display: block; font-size: 14px; }
+        .data-info span { color: #64748b; font-size: 11px; }
+        .auto-fill-active { border-color: var(--accent) !important; background: rgba(16, 185, 129, 0.15) !important; }
+        #actionButtons { display: none; gap: 10px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 class="main-title" onclick="loginAdmin()">Umut Salman | Operasyonel Panel</h2>
+
+    <div id="adminPanel" class="card card-admin" style="display:none;">
+        <h2 style="color:var(--admin); font-size: 16px; margin-top: 0;">⚙️ YÖNETİCİ PANELİ</h2>
+        <label>Sayfa Adı</label><input type="text" id="newSheetName" placeholder="Örn: Takviye_Listesi">
+        <label>Başlıklar (Virgülle ayırın)</label><input type="text" id="newSheetHeaders" placeholder="İSİM, TARİH, MAĞAZA...">
+        <button class="btn btn-admin" onclick="adminAction('updateHeaders')">GÜNCELLE / OLUŞTUR</button>
+        <button class="btn btn-danger" onclick="adminAction('deleteSheet')">SAYFAYI TAMAMEN SİL</button>
+    </div>
+
+    <div class="card card-izin">
+        <h2 style="color:var(--warning); font-size: 16px; margin-top: 0;">📅 İZİN SORGUSU</h2>
+        <div style="display: flex; gap: 10px;"><input type="date" id="startDate"><input type="date" id="endDate"></div>
+        <button class="btn btn-izin" onclick="checkConflict()">MÜSAİTLİK KONTROLÜ</button>
+        <div id="statusMsg" style="text-align:center; font-weight:800; font-size:12px; margin-top:10px;"></div>
+    </div>
+
+    <div class="card card-diger">
+        <h2 style="color:var(--accent); font-size: 16px; margin-top: 0;">📝 VERİ GİRİŞİ</h2>
+        <select id="sheetSelector" onchange="loadSheetData()"><option value="">Sayfa Seçiniz...</option></select>
+        <div id="dynamicInputs"></div>
+        <button id="saveBtn" class="btn btn-diger" style="display:none;" onclick="saveGeneralData()">SİSTEME KAYDET</button>
+        
+        <div id="listArea" style="display:none; margin-top: 25px;">
+            <div id="actionButtons">
+                <button class="btn" style="background: #2563eb; color: white;" onclick="exportToExcel()">📥 EXCEL</button>
+                <button class="btn" style="background: #db2777; color: white;" onclick="sendEmail()">📧 MAİL</button>
+            </div>
+            <label style="border-bottom: 1px solid #334155; padding-bottom: 5px; margin-bottom: 15px;">Son Kayıtlar</label>
+            <div id="dataList"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbyNUnqCFXjqAv4wqPTB036Q4-bo7xkIXLMSjYSK7PoKl_1i2OSfsps018U_zHEeIORP/exec";
+    let vardiyaData = { headers: [], allValues: [] };
+
+    window.onload = async () => { refreshList(); loadVardiya(); };
+
+    async function refreshList() {
+        const resp = await fetch(`${scriptUrl}?action=getSheets`);
+        const data = await resp.json();
+        const selector = document.getElementById("sheetSelector");
+        selector.innerHTML = '<option value="">Sayfa Seçiniz...</option>';
+        data.sheets.forEach(s => { selector.innerHTML += `<option value="${s}">${s}</option>`; });
+    }
+
+    async function loadVardiya() {
+        try { const r = await fetch(`${scriptUrl}?action=getData&sheet=Vardiya`); vardiyaData = await r.json(); } catch(e){}
+    }
+
+    function loginAdmin() { if(prompt("Şifre:") === "685450") document.getElementById("adminPanel").style.display = "block"; }
+
+    async function loadSheetData() {
+        const s = document.getElementById("sheetSelector").value;
+        if(!s) return;
+        const resp = await fetch(`${scriptUrl}?action=getData&sheet=${encodeURIComponent(s)}`);
+        const result = await resp.json();
+        document.getElementById("dynamicInputs").innerHTML = result.headers.map(h => `
+            <label>${h}</label><input type="${h.toLowerCase().includes('tarih') ? 'date' : 'text'}" 
+            class="inp-data" data-h="${h.trim().toLowerCase()}" onblur="searchVardiya(this)">`).join("");
+        document.getElementById("saveBtn").style.display = "block";
+        document.getElementById("listArea").style.display = "block";
+        document.getElementById("actionButtons").style.display = "flex";
+        renderList(result.values);
+    }
+
+    function searchVardiya(el) {
+        const val = el.value.trim().toLowerCase();
+        if(val.length < 3 || !vardiyaData.allValues) return;
+        const match = vardiyaData.allValues.find(row => row.data.some(c => c && c.toString().toLowerCase() === val));
+        if(match) {
+            document.querySelectorAll(".inp-data").forEach(inp => {
+                const idx = vardiyaData.headers.findIndex(vh => vh.trim().toLowerCase() === inp.dataset.h);
+                if(idx !== -1 && match.data[idx]) {
+                    inp.value = inp.type === "date" ? match.data[idx].split("T")[0] : match.data[idx];
+                    inp.classList.add("auto-fill-active");
+                }
+            });
+        }
+    }
+
+    function renderList(rows) {
+        document.getElementById("dataList").innerHTML = rows.map(r => `
+            <div class="data-item"><div class="data-info"><b>${r.data[0]}</b><span>${r.data.join(" | ")}</span></div>
+            <button class="btn-del" onclick="deleteEntry(${r.rowId})">SİL</button></div>`).join("");
+    }
+
+    async function saveGeneralData() {
+        const s = document.getElementById("sheetSelector").value;
+        const d = Array.from(document.querySelectorAll(".inp-data")).map(i => i.value);
+        await fetch(scriptUrl, { method: "POST", mode: "no-cors", body: JSON.stringify({ sheetName: s, rowData: d }) });
+        alert("Kaydedildi"); loadSheetData();
+    }
+
+    async function adminAction(act) {
+        const sName = document.getElementById("newSheetName").value;
+        const headers = document.getElementById("newSheetHeaders").value.split(",");
+        await fetch(scriptUrl, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: act, sheetName: sName, newHeaders: headers }) });
+        alert("İşlem Tamam"); refreshList();
+    }
+
+    async function deleteEntry(id) {
+        if(!confirm("Silinsin mi?")) return;
+        const s = document.getElementById("sheetSelector").value;
+        await fetch(scriptUrl, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: "deleteRow", sheetName: s, rowId: id }) });
+        setTimeout(loadSheetData, 500);
+    }
+
+    function exportToExcel() {
+        const s = document.getElementById("sheetSelector").value;
+        let csv = "\uFEFF" + Array.from(document.querySelectorAll(".data-item")).map(r => r.querySelector("span").innerText.replace(/ \| /g, ",")).join("\n");
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `${s}_Rapor.csv`;
+        link.click();
+    }
+
+    async function sendEmail() {
+        const s = document.getElementById("sheetSelector").value;
+        await fetch(scriptUrl, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: "sendExcelEmail", sheetName: s }) });
+        alert("E-posta gönderildi!");
+    }
+
+    async function checkConflict() {
+        const s = document.getElementById("startDate").value, e = document.getElementById("endDate").value;
+        const resp = await fetch(`${scriptUrl}?action=checkConflict&start=${s}&end=${e}`);
+        const res = await resp.json();
+        const msg = document.getElementById("statusMsg");
+        msg.innerText = res.exists ? "❌ TARİHLER DOLU" : "✅ UYGUN";
+        msg.style.color = res.exists ? "var(--danger)" : "var(--accent)";
+    }
+</script>
+</body>
+</html>
